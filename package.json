@@ -1,6 +1,6 @@
 {
   "name": "malachi-ayoayo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "ayoayo.js",
   "scripts": {
@@ -9,8 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "malachi-ayoayo": "^1.0.0"
-  }
+  "type": "module"
 }
