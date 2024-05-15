@@ -2,17 +2,7 @@ import EventEmitter from './eventEmitter.js'
 import minimax from "./minimax.js"
 
 export default class AyoAyo extends EventEmitter {
-    static events = {
-        GAME_OVER: "game_over",
-        DROP_SEED: "drop_seed",
-        SWITCH_TURN: "switch_turn",
-        MOVE_TO: "move_to",
-        PICKUP_SEEDS: "pickup_seeds",
-        CAPTURE: "capture"
-    }
 
-    static TOTAL_NUM_SEEDS = 48;
-    static NUM_CELLS_PER_ROW = 6;
     constructor() {
         super();
         this.board = [
@@ -79,111 +69,129 @@ export default class AyoAyo extends EventEmitter {
         return clone;
     }
 
-    //simulate sowing of seeds starting from cell and returns the updated board and number of captured seeds. Report events by calling emit. (made possible through EventEmitter).
-    static relaySow(board, player, cell, emit = function (eventType, ...args) { }) {
-        const captured = [0, 0];
+}
 
-        //pickup seeds
-        let numSeedsInHand = board[player][cell];
-        board[player][cell] = 0;
-        emit(AyoAyo.events.PICKUP_SEEDS, player, cell);
+//static property 
+AyoAyo.events = {
+    GAME_OVER: "game_over",
+    DROP_SEED: "drop_seed",
+    SWITCH_TURN: "switch_turn",
+    MOVE_TO: "move_to",
+    PICKUP_SEEDS: "pickup_seeds",
+    CAPTURE: "capture"
+}
 
-        //move to next cell position.
-        const nextPosition = AyoAyo.next(player, cell);
-        emit(AyoAyo.events.MOVE_TO, [player, cell], nextPosition);
-        let [nextPositionRow, nextPositionCell] = nextPosition;
+//static property 
+AyoAyo.TOTAL_NUM_SEEDS = 48;
 
-        //terminate when all seeds have been dropped and no continuing pickup was done.
-        while (numSeedsInHand > 0) {
-            //drop one seed in next cell.
-            board[nextPositionRow][nextPositionCell]++;
-            numSeedsInHand--;
-            emit(AyoAyo.events.DROP_SEED, nextPositionRow, nextPositionCell);
+//static property
+AyoAyo.NUM_CELLS_PER_ROW = 6;
 
-            //if the cell has four seeds, capture that specific cell. 
-            //if this is the last seed in hand, give it to the current player. 
-            //if not, give to the owner of the row.
-            if (board[nextPositionRow][nextPositionCell] == 4) {
-                const capturer = numSeedsInHand == 0 ? player : nextPositionRow;
-                captured[capturer] += 4;
-                //set cell to zero since all seeds has been picked up.
-                board[nextPositionRow][nextPositionCell] = 0;
-                emit(AyoAyo.events.CAPTURE, nextPositionRow, nextPositionCell, capturer);
-            }
+//static methods:
 
-            //simulate. if this is the last seed in hand and the cell was not originally empty, pickup the seeds in the cell.
-            if (numSeedsInHand == 0 && board[nextPositionRow][nextPositionCell] > 1) {
-                //the current seed in hand now.
-                numSeedsInHand = board[nextPositionRow][nextPositionCell];
-                //set cell to zero since all seeds has been picked up.
-                board[nextPositionRow][nextPositionCell] = 0;
-                emit(AyoAyo.events.PICKUP_SEEDS, nextPositionRow, nextPositionCell);
-            }
+//simulate sowing of seeds starting from cell and returns the updated board and number of captured seeds. Report events by calling emit. (made possible through EventEmitter).
+AyoAyo.relaySow = function relaySow(board, player, cell, emit = function (eventType, ...args) { }) {
+    const captured = [0, 0];
 
-            //move to next position
-            const nextPosition = AyoAyo.next(nextPositionRow, nextPositionCell);
-            emit(AyoAyo.events.MOVE_TO, [nextPositionRow, nextPositionCell], nextPosition);
-            [nextPositionRow, nextPositionCell] = nextPosition;
+    //pickup seeds
+    let numSeedsInHand = board[player][cell];
+    board[player][cell] = 0;
+    emit(AyoAyo.events.PICKUP_SEEDS, player, cell);
+
+    //move to next cell position.
+    const nextPosition = AyoAyo.next(player, cell);
+    emit(AyoAyo.events.MOVE_TO, [player, cell], nextPosition);
+    let [nextPositionRow, nextPositionCell] = nextPosition;
+
+    //terminate when all seeds have been dropped and no continuing pickup was done.
+    while (numSeedsInHand > 0) {
+        //drop one seed in next cell.
+        board[nextPositionRow][nextPositionCell]++;
+        numSeedsInHand--;
+        emit(AyoAyo.events.DROP_SEED, nextPositionRow, nextPositionCell);
+
+        //if the cell has four seeds, capture that specific cell. 
+        //if this is the last seed in hand, give it to the current player. 
+        //if not, give to the owner of the row.
+        if (board[nextPositionRow][nextPositionCell] == 4) {
+            const capturer = numSeedsInHand == 0 ? player : nextPositionRow;
+            captured[capturer] += 4;
+            //set cell to zero since all seeds has been picked up.
+            board[nextPositionRow][nextPositionCell] = 0;
+            emit(AyoAyo.events.CAPTURE, nextPositionRow, nextPositionCell, capturer);
         }
 
-        return [board, captured];
-    }
-
-    static togglePlayer(player) {
-        //returns either 1 or 0.
-        return (player + 1) % 2;
-    }
-
-    //returns a list of all possible cells the next player can play. 
-    //a player may play only cells with at least one seed. 
-    //if the other player has no seeds, the current player must "feed" them, if possible.
-    static getPermissibleMoves(board, player) {
-        const otherPlayer = AyoAyo.togglePlayer(player);
-        const nonEmptyCellIndexes = board[player].map((_, index) => index).filter(cellIndex => board[player][cellIndex] > 0);
-
-        //if the other player has seeds, permit all non-empty cells
-        const otherPlayerHasSeeds = board[otherPlayer].some(cell => cell > 0);
-        if (otherPlayerHasSeeds) {
-            return nonEmptyCellIndexes;
+        //simulate. if this is the last seed in hand and the cell was not originally empty, pickup the seeds in the cell.
+        if (numSeedsInHand == 0 && board[nextPositionRow][nextPositionCell] > 1) {
+            //the current seed in hand now.
+            numSeedsInHand = board[nextPositionRow][nextPositionCell];
+            //set cell to zero since all seeds has been picked up.
+            board[nextPositionRow][nextPositionCell] = 0;
+            emit(AyoAyo.events.PICKUP_SEEDS, nextPositionRow, nextPositionCell);
         }
 
-        //other player has no seeds, permit only non-empty cells that feed
-        return nonEmptyCellIndexes.filter(cellIndexes => {
-            const boardCopy = board.map(row => row.slice());
-            const [boardIfCellPlayed] = AyoAyo.relaySow(boardCopy, player, cellIndexes);
-            return boardIfCellPlayed[otherPlayer].some(cell => cell > 0);
-        })
+        //move to next position
+        const nextPosition = AyoAyo.next(nextPositionRow, nextPositionCell);
+        emit(AyoAyo.events.MOVE_TO, [nextPositionRow, nextPositionCell], nextPosition);
+        [nextPositionRow, nextPositionCell] = nextPosition;
     }
 
+    return [board, captured];
+}
 
-    static getWinner(captured) {
-        //return -1 if there is a tie (both player have equal number of seeds).
-        if (captured[0] == captured[1]) return -1
-        if (captured[0] > captured[1]) return 0;
-        return 1
+AyoAyo.togglePlayer = function togglePlayer(player) {
+    //returns either 1 or 0.
+    return (player + 1) % 2;
+}
+
+//returns a list of all possible cells the next player can play. 
+//a player may play only cells with at least one seed. 
+//if the other player has no seeds, the current player must "feed" them, if possible.
+AyoAyo.permissibleMoves = function getPermissibleMoves(board, player) {
+    const otherPlayer = AyoAyo.togglePlayer(player);
+    const nonEmptyCellIndexes = board[player].map((_, index) => index).filter(cellIndex => board[player][cellIndex] > 0);
+
+    //if the other player has seeds, permit all non-empty cells
+    const otherPlayerHasSeeds = board[otherPlayer].some(cell => cell > 0);
+    if (otherPlayerHasSeeds) {
+        return nonEmptyCellIndexes;
     }
 
-    static next(row, cell) {
-        // if in the first row, check if the current hand location is at the far left of the board.
-        //if YES, go to the next(second) row, if NO, move the hand to the next cell towards the left.
-        if (row == 0) return cell == 0 ? [1, 0] : [0, cell - 1]
+    //other player has no seeds, permit only non-empty cells that feed
+    return nonEmptyCellIndexes.filter(cellIndexes => {
+        const boardCopy = board.map(row => row.slice());
+        const [boardIfCellPlayed] = AyoAyo.relaySow(boardCopy, player, cellIndexes);
+        return boardIfCellPlayed[otherPlayer].some(cell => cell > 0);
+    })
+}
 
-        // if in the second row, check if the current hand location is at the far right of the board.
-        //if YES, go to the first  row, if NO move the hand to the next cell towards the right.
-        return cell == AyoAyo.NUM_CELLS_PER_ROW - 1 ? [0, AyoAyo.NUM_CELLS_PER_ROW - 1] : [1, cell + 1];
-    }
+AyoAyo.getWinner = function getWinner(captured) {
+    //return -1 if there is a tie (both player have equal number of seeds).
+    if (captured[0] == captured[1]) return -1
+    if (captured[0] > captured[1]) return 0;
+    return 1
+}
 
-    static vsMinimax(depth = 5) {
-        const game = new AyoAyo();
-        const oldPlayFunc = game.play.bind(game);
-        game.play = function (...args) {
-            oldPlayFunc(...args);
-            if (game.winner == null) {
-                const [_, moves] = minimax(game, depth, "", game.nextPlayer == 0);
-                const move = Number(moves[0]);
-                oldPlayFunc(move);
-            }
+AyoAyo.next = function next(row, cell) {
+    // if in the first row, check if the current hand location is at the far left of the board.
+    //if YES, go to the next(second) row, if NO, move the hand to the next cell towards the left.
+    if (row == 0) return cell == 0 ? [1, 0] : [0, cell - 1]
+
+    // if in the second row, check if the current hand location is at the far right of the board.
+    //if YES, go to the first  row, if NO move the hand to the next cell towards the right.
+    return cell == AyoAyo.NUM_CELLS_PER_ROW - 1 ? [0, AyoAyo.NUM_CELLS_PER_ROW - 1] : [1, cell + 1];
+}
+
+AyoAyo.vsMinimax = function vsMinimax(depth = 5) {
+    const game = new AyoAyo();
+    const oldPlayFunc = game.play.bind(game);
+    game.play = function (...args) {
+        oldPlayFunc(...args);
+        if (game.winner == null) {
+            const [_, moves] = minimax(game, depth, "", game.nextPlayer == 0);
+            const move = Number(moves[0]);
+            oldPlayFunc(move);
         }
-        return game;
     }
+    return game;
 }
